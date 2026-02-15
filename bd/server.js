@@ -3,14 +3,15 @@ const http = require("http");
 const { Server } = require("socket.io");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const path = require("path");
 require("dotenv").config();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-/* serve driver page */
-app.use(express.static("public"));
+/* serve driver page (important for Render) */
+app.use(express.static(path.join(__dirname, "public")));
 
 /* create http server */
 const server = http.createServer(app);
@@ -19,14 +20,16 @@ const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
     origin: "*",
+    methods: ["GET", "POST"],
   },
+  transports: ["websocket", "polling"],
 });
 
 /* database connect */
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB Connected"))
-  .catch((err) => console.log(err));
+  .catch((err) => console.log("Mongo Error:", err));
 
 /* store active vehicles in memory */
 let vehicles = {};
@@ -47,7 +50,7 @@ io.on("connection", (socket) => {
 
     vehicles[tripId] = { lat, lng };
 
-    // send to only that vehicle watchers
+    // send only to users tracking this vehicle
     io.to(tripId).emit("receive-location", { lat, lng });
   });
 
@@ -56,7 +59,7 @@ io.on("connection", (socket) => {
   });
 });
 
-/* API for hardware tracker later */
+/* API for future hardware GPS device */
 app.post("/api/location", (req, res) => {
   const { vehicleId, lat, lng } = req.body;
 
@@ -67,9 +70,19 @@ app.post("/api/location", (req, res) => {
   res.json({ status: "ok" });
 });
 
+/* health route (Render uses it) */
+app.get("/health", (req, res) => {
+  res.status(200).send("OK");
+});
+
+/* homepage test */
 app.get("/", (req, res) => {
   res.send("Vehicle Tracking Server Running");
 });
 
+/* start server */
 const PORT = process.env.PORT || 5000;
-server.listen(PORT,"0.0.0.0", () => console.log("Server running on port", PORT));
+
+server.listen(PORT, "0.0.0.0", () => {
+  console.log("Server running on port", PORT);
+});
