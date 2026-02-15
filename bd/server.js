@@ -64,7 +64,12 @@ app.post("/api/location", (req, res) => {
   const { vehicleId, lat, lng } = req.body;
 
   vehicles[vehicleId] = { lat, lng };
-
+  console.log("=== GPS DEVICE UPDATE ===");
+  console.log("Vehicle:", vehicleId);
+  console.log("Latitude :", lat);
+  console.log("Longitude:", lng);
+  console.log("Google Map:", `https://maps.google.com/?q=${lat},${lng}`);
+  console.log("=========================");
   io.to(vehicleId).emit("receive-location", { lat, lng });
 
   res.json({ status: "ok" });
