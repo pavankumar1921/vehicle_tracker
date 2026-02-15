@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Driver Tracker</title>
+</head>
+<body>
+
+<h2>Driver Vehicle Tracking</h2>
+<button onclick="start()">START TRIP</button>
+
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
+<script>
+
+const vehicleId = prompt("Enter Vehicle Number (example BUS101)");
+
+const socket = io();
+
+socket.emit("join-trip", vehicleId);
+
+function start(){
+  navigator.geolocation.watchPosition((pos)=>{
+
+    socket.emit("send-location",{
+      tripId: vehicleId,
+      lat: pos.coords.latitude,
+      lng: pos.coords.longitude
+    });
+
+  },
+  ()=>alert("Please allow GPS permission"),
+  {
+    enableHighAccuracy:true,
+    maximumAge:0,
+    timeout:5000
+  });
+}
+
+</script>
+
+</body>
+</html>
