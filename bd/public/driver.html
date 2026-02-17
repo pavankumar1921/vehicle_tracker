@@ -2,38 +2,104 @@
 <html>
 <head>
   <title>Driver Tracker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body{
+      font-family: Arial;
+      text-align:center;
+      padding-top:40px;
+    }
+    input{
+      padding:10px;
+      font-size:18px;
+      width:200px;
+      margin-bottom:15px;
+    }
+    button{
+      padding:12px 20px;
+      font-size:18px;
+      background:#28a745;
+      color:white;
+      border:none;
+      border-radius:6px;
+    }
+    #status{
+      margin-top:20px;
+      font-weight:bold;
+      color:#333;
+    }
+  </style>
 </head>
+
 <body>
 
-<h2>Driver Vehicle Tracking</h2>
-<button onclick="start()">START TRIP</button>
+<h2>🚗 Driver Vehicle Tracking</h2>
+
+<input id="vehicleId" placeholder="Enter Vehicle Number (BUS101)" />
+
+<br>
+<button onclick="startTracking()">START TRIP</button>
+
+<p id="status">Waiting to start...</p>
 
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 
 <script>
 
-const vehicleId = prompt("Enter Vehicle Number (example BUS101)");
+let socket;
+let watchId = null;
 
-const socket = io();
+function startTracking(){
 
-socket.emit("join-trip", vehicleId);
+  const vehicleId = document.getElementById("vehicleId").value.trim();
 
-function start(){
-  navigator.geolocation.watchPosition((pos)=>{
+  if(!vehicleId){
+    alert("Please enter vehicle number");
+    return;
+  }
 
-    socket.emit("send-location",{
-      tripId: vehicleId,
-      lat: pos.coords.latitude,
-      lng: pos.coords.longitude
-    });
+  document.getElementById("status").innerText = "Connecting to server...";
 
-  },
-  ()=>alert("Please allow GPS permission"),
-  {
-    enableHighAccuracy:true,
-    maximumAge:0,
-    timeout:5000
+  socket = io();
+
+  socket.on("connect", ()=>{
+    socket.emit("join-trip", vehicleId);
+    document.getElementById("status").innerText = "Connected. Waiting for GPS...";
   });
+
+  // Request GPS permission
+  if(!navigator.geolocation){
+    alert("Geolocation not supported on this device");
+    return;
+  }
+
+  watchId = navigator.geolocation.watchPosition(
+    (position)=>{
+
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
+
+      document.getElementById("status").innerText =
+        `Tracking... Lat: ${lat.toFixed(5)} Lng: ${lng.toFixed(5)}`;
+
+      socket.emit("send-location",{
+        tripId: vehicleId,
+        lat: lat,
+        lng: lng
+      });
+
+    },
+    (error)=>{
+      document.getElementById("status").innerText =
+        "GPS Error: Please enable precise location & go outdoors";
+      console.log(error);
+    },
+    {
+      enableHighAccuracy:true,
+      maximumAge:0,
+      timeout:15000
+    }
+  );
 }
 
 </script>
