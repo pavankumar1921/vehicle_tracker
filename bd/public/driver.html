@@ -45,14 +45,12 @@
 <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 
 <script>
-
 let socket;
 let watchId = null;
 
 function startTracking(){
 
   const vehicleId = document.getElementById("vehicleId").value.trim();
-
   if(!vehicleId){
     alert("Please enter vehicle number");
     return;
@@ -60,16 +58,26 @@ function startTracking(){
 
   document.getElementById("status").innerText = "Connecting to server...";
 
-  socket = io();
+  // IMPORTANT: connect to secure render websocket
+  socket = io(window.location.origin, {
+    transports: ["websocket"],
+    secure: true,
+    reconnection: true
+  });
 
   socket.on("connect", ()=>{
+    console.log("Socket connected:", socket.id);
     socket.emit("join-trip", vehicleId);
     document.getElementById("status").innerText = "Connected. Waiting for GPS...";
   });
 
-  // Request GPS permission
+  socket.on("connect_error", (err)=>{
+    console.log("Socket error:", err);
+    document.getElementById("status").innerText = "Server connection failed";
+  });
+
   if(!navigator.geolocation){
-    alert("Geolocation not supported on this device");
+    alert("Geolocation not supported");
     return;
   }
 
@@ -82,6 +90,8 @@ function startTracking(){
       document.getElementById("status").innerText =
         `Tracking... Lat: ${lat.toFixed(5)} Lng: ${lng.toFixed(5)}`;
 
+      console.log("Sending to server:", lat, lng);
+
       socket.emit("send-location",{
         tripId: vehicleId,
         lat: lat,
@@ -90,9 +100,9 @@ function startTracking(){
 
     },
     (error)=>{
-      document.getElementById("status").innerText =
-        "GPS Error: Please enable precise location & go outdoors";
       console.log(error);
+      document.getElementById("status").innerText =
+        "GPS Error — enable precise location & go outdoors";
     },
     {
       enableHighAccuracy:true,
@@ -101,7 +111,6 @@ function startTracking(){
     }
   );
 }
-
 </script>
 
 </body>
