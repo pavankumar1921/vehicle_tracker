@@ -33,32 +33,78 @@ mongoose
 
 /* store active vehicles in memory */
 let vehicles = {};
+// ===== HTTP REQUEST LOGGER =====
+app.use((req, res, next) => {
+  console.log("HTTP:", req.method, req.url);
+  next();
+});
+/* socket logic */
+// io.on("connection", (socket) => {
+//   console.log("Client connected:", socket.id);
 
+//   // user or driver joins vehicle room
+//   socket.on("join-trip", (vehicleId) => {
+//     socket.join(vehicleId);
+//     console.log("Joined vehicle:", vehicleId);
+//   });
+
+//   // driver sends location
+//   socket.on("send-location", (data) => {
+//     const { tripId, lat, lng } = data;
+
+//     vehicles[tripId] = { lat, lng };
+
+//     // send only to users tracking this vehicle
+//     io.to(tripId).emit("receive-location", { lat, lng });
+//   });
+
+//   socket.on("disconnect", () => {
+//     console.log("Disconnected:", socket.id);
+//   });
+// });
 /* socket logic */
 io.on("connection", (socket) => {
-  console.log("Client connected:", socket.id);
 
-  // user or driver joins vehicle room
+  console.log("=========== NEW CLIENT ===========");
+  console.log("Socket ID:", socket.id);
+  console.log("Client IP:", socket.handshake.address);
+
+  // when user joins vehicle
   socket.on("join-trip", (vehicleId) => {
+    console.log("JOIN REQUEST:", vehicleId);
+
     socket.join(vehicleId);
-    console.log("Joined vehicle:", vehicleId);
+
+    console.log("Rooms now:", socket.rooms);
   });
 
-  // driver sends location
+  // DRIVER GPS DATA (MOST IMPORTANT)
   socket.on("send-location", (data) => {
+
+    console.log("📡 LOCATION PACKET RECEIVED");
+    console.log(data);
+
+    if(!data){
+      console.log("No data received");
+      return;
+    }
+
     const { tripId, lat, lng } = data;
+
+    console.log("Vehicle:", tripId);
+    console.log("Latitude:", lat);
+    console.log("Longitude:", lng);
+    console.log("Google:", `https://maps.google.com/?q=${lat},${lng}`);
 
     vehicles[tripId] = { lat, lng };
 
-    // send only to users tracking this vehicle
     io.to(tripId).emit("receive-location", { lat, lng });
   });
 
   socket.on("disconnect", () => {
-    console.log("Disconnected:", socket.id);
+    console.log("Client disconnected:", socket.id);
   });
 });
-
 /* API for future hardware GPS device */
 app.post("/api/location", (req, res) => {
   const { vehicleId, lat, lng } = req.body;
